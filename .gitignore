@@ -1,4 +1,8 @@
-*/PointCLIP_V2/zeroshot_cls/data/
-clip
-
+blip
+raw_image.pt
+image_feature.pt
+*/*/data/
+*/*/*/__pycache__
+*/*/*/*/__pycache__
+*/*/*/*/*/__pycache__
 
