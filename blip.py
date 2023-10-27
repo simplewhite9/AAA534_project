@@ -14,6 +14,7 @@ url = "http://images.cocodataset.org/val2017/000000039769.jpg"
 image = Image.open(requests.get(url, stream=True).raw)
 
 
+# Label index for raw_images.pt
 # [ 4,  0,  2,  8, 23, 37, 35, 35, 28, 16, 20,  0, 33, 35, 37, 3
 
 labels = ["bookshelf", "airplane", "bed"]
