@@ -331,6 +331,31 @@ class SimpleTrainer(TrainerBase):
             print(f'Detected {device_count} GPUs. Wrap the model with nn.DataParallel')
             self.model = nn.DataParallel(self.model)
 
+
+    def train(self, split=None):
+        """A generic testing pipeline."""
+        self.set_model_mode('train')
+        self.evaluator.reset()
+        # if split is None:
+        #     split = self.cfg.TRAIN.SPLIT
+
+        if split == 'train' and self.train_loader_x is not None:
+            data_loader = self.train_loader_x
+            print('Do train on {} set'.format(split))
+
+        for batch_idx, batch in enumerate(data_loader):
+            input, label = self.parse_batch_test(batch)
+            output = self.model_train(input, label)
+            self.evaluator.process(output, label)
+        results = self.evaluator.evaluate()
+
+
+        for k, v in results.items():
+            tag = '{}/{}'.format(split, k)
+            self.write_scalar(tag, v, self.epoch)
+
+        return list(results.values())[0]
+
     @torch.no_grad()
     def test(self, split=None):
         """A generic testing pipeline."""
@@ -358,6 +383,7 @@ class SimpleTrainer(TrainerBase):
             self.write_scalar(tag, v, self.epoch)
 
         return list(results.values())[0]
+    
 
     @torch.no_grad()
     def test_zs(self, split=None):
@@ -399,6 +425,9 @@ class SimpleTrainer(TrainerBase):
         return list(results.values())[0]
 
     def model_inference(self, input, label):
+        return self.model(input, label)
+    
+    def model_train(self, input, label):
         return self.model(input, label)
 
     def parse_batch_test(self, batch):

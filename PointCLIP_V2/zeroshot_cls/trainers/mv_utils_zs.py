@@ -136,41 +136,50 @@ class Realistic_Projection:
     """For creating images from PC based on the view information.
     """
     def __init__(self):
-        _views = np.asarray([
-            [[1 * np.pi / 4, 0, np.pi / 2], [-0.5, -0.5, TRANS]],
-            [[3 * np.pi / 4, 0, np.pi / 2], [-0.5, -0.5, TRANS]],
-            [[5 * np.pi / 4, 0, np.pi / 2], [-0.5, -0.5, TRANS]],
-            [[7 * np.pi / 4, 0, np.pi / 2], [-0.5, -0.5, TRANS]],
-            [[0 * np.pi / 2, 0, np.pi / 2], [-0.5, -0.5, TRANS]],
-            [[1 * np.pi / 2, 0, np.pi / 2], [-0.5, -0.5, TRANS]],
-            [[2 * np.pi / 2, 0, np.pi / 2], [-0.5, -0.5, TRANS]],
-            [[3 * np.pi / 2, 0, np.pi / 2], [-0.5, -0.5, TRANS]],
-            [[0, -np.pi / 2, np.pi / 2], [-0.5, -0.5, TRANS]],
-            [[0, np.pi / 2, np.pi / 2], [-0.5, -0.5, TRANS]],
-            ])
-        
+        # _views = np.asarray([
+        #     [[1 * np.pi / 4, 0, np.pi / 2], [-0.5, -0.5, TRANS]], #1 [ rotation, translation]
+        #     [[3 * np.pi / 4, 0, np.pi / 2], [-0.5, -0.5, TRANS]],
+        #     [[5 * np.pi / 4, 0, np.pi / 2], [-0.5, -0.5, TRANS]],
+        #     [[7 * np.pi / 4, 0, np.pi / 2], [-0.5, -0.5, TRANS]],
+        #     [[0 * np.pi / 2, 0, np.pi / 2], [-0.5, -0.5, TRANS]],
+        #     [[1 * np.pi / 2, 0, np.pi / 2], [-0.5, -0.5, TRANS]],
+        #     [[2 * np.pi / 2, 0, np.pi / 2], [-0.5, -0.5, TRANS]],
+        #     [[3 * np.pi / 2, 0, np.pi / 2], [-0.5, -0.5, TRANS]],
+        #     [[0, -np.pi / 2, np.pi / 2], [-0.5, -0.5, TRANS]],
+        #     [[0, np.pi / 2, np.pi / 2], [-0.5, -0.5, TRANS]], # 10
+        #     ])
+
         # adding some bias to the view angle to reveal more surface
-        _views_bias = np.asarray([
-            [[0, np.pi / 9, 0], [-0.5, 0, TRANS]],
-            [[0, np.pi / 9, 0], [-0.5, 0, TRANS]],
-            [[0, np.pi / 9, 0], [-0.5, 0, TRANS]],
-            [[0, np.pi / 9, 0], [-0.5, 0, TRANS]],
-            [[0, np.pi / 9, 0], [-0.5, 0, TRANS]],
-            [[0, np.pi / 9, 0], [-0.5, 0, TRANS]],
-            [[0, np.pi / 9, 0], [-0.5, 0, TRANS]],
-            [[0, np.pi / 9, 0], [-0.5, 0, TRANS]],
-            [[0, np.pi / 15, 0], [-0.5, 0, TRANS]],
-            [[0, np.pi / 15, 0], [-0.5, 0, TRANS]],
-            ])
+        # _views_bias = np.asarray([
+        #     [[0, np.pi / 9, 0], [-0.5, 0, TRANS]],
+        #     [[0, np.pi / 9, 0], [-0.5, 0, TRANS]],
+        #     [[0, np.pi / 9, 0], [-0.5, 0, TRANS]],
+        #     [[0, np.pi / 9, 0], [-0.5, 0, TRANS]],
+        #     [[0, np.pi / 9, 0], [-0.5, 0, TRANS]],
+        #     [[0, np.pi / 9, 0], [-0.5, 0, TRANS]],
+        #     [[0, np.pi / 9, 0], [-0.5, 0, TRANS]],
+        #     [[0, np.pi / 9, 0], [-0.5, 0, TRANS]],
+        #     [[0, np.pi / 15, 0], [-0.5, 0, TRANS]],
+        #     [[0, np.pi / 15, 0], [-0.5, 0, TRANS]],
+        #     ])
+        
+        ####################################################################
+        # self.angle_bias = nn.Parameter((torch.ones(4)* (np.pi / 4)))
+        self.angle_bias = nn.Parameter(torch.tensor((np.pi / 4, np.pi / 4, np.pi / 4)))
+        view_trans = torch.ones((3)) * -0.5
+        _views = torch.stack((self.angle_bias, view_trans))[None, :]
+        _views_bias = torch.tensor(([0, np.pi / 9, 0], [-0.5, 0, TRANS]))[None, :]
+        ###################################################################
 
         self.num_views = _views.shape[0]
-
-        angle = torch.tensor(_views[:, 0, :]).float().cuda()
+        # angle = torch.tensor(_views[:, 0, :]).float().cuda()
+        angle = _views[:, 0, :].float().cuda()
         self.rot_mat = euler2mat(angle).transpose(1, 2)
-        angle2 = torch.tensor(_views_bias[:, 0, :]).float().cuda()
+        # angle2 = torch.tensor(_views_bias[:, 0, :]).float().cuda()
+        angle2 = _views_bias[:, 0, :].float().cuda()
         self.rot_mat2 = euler2mat(angle2).transpose(1, 2)
 
-        self.translation = torch.tensor(_views[:, 1, :]).float().cuda()
+        self.translation = _views[:, 1, :].float().cuda()
         self.translation = self.translation.unsqueeze(1)
 
         self.grid2image = Grid2Image().cuda()
@@ -204,6 +213,8 @@ class Realistic_Projection:
         points = torch.matmul(points, rot_mat)
         points = torch.matmul(points, rot_mat2)
         points = points - translation
+
+        breakpoint()
         return points
 
 def get2DGaussianKernel(ksize, sigma=0):

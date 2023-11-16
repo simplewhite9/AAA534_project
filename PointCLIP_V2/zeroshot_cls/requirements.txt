@@ -11,4 +11,10 @@ ftfy
 regex
 tqdm
 h5py
-torch-scatter==2.0.8 -f https://data.pyg.org/whl/torch-1.8.0+cu111.html
+
+
+
+
+
+# meant to be installed through pip (personal note)
+torch-scatter==2.0.8 -f https://data.pyg.org/whl/torch-1.8.0+cu111.html  

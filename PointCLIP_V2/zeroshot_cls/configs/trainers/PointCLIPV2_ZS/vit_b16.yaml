@@ -9,7 +9,8 @@ MODEL:
     NAME2: 'vit_b16'
     CHANNEL: 512
   PROJECT:
-    NUM_VIEWS: 10
+    NUM_VIEWS: 1
+    # NUM_VIEWS: 10
 
 SEARCH:
   TIME: 4

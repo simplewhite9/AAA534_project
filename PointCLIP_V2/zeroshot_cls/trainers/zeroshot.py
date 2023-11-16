@@ -60,7 +60,8 @@ class PointCLIPV2_ZS(TrainerX):
         self.channel = cfg.MODEL.BACKBONE.CHANNEL
     
         # Realistic projection
-        self.num_views = cfg.MODEL.PROJECT.NUM_VIEWS
+        # self.num_views = cfg.MODEL.PROJECT.NUM_VIEWS
+        self.num_views = 1
         pc_views = Realistic_Projection()
         self.get_img = pc_views.get_img
 
@@ -77,25 +78,17 @@ class PointCLIPV2_ZS(TrainerX):
         return img
     
     def model_inference(self, pc, label=None):
+        # pc : (16, 1024, 3)
         
         with torch.no_grad():
             # Realistic Projection
-
             images = self.real_proj(pc) # 16, 1024, 3  = > 160, 3, 224, 224 (num_views = 10)
             images = images.type(self.dtype)
-            
-            # Image features
-            ########
-            # torch.save(images.cpu(), 'raw_images.pt')
-            #######
             image_feat = self.visual_encoder(images) # 160, 512
             
             image_feat = image_feat / image_feat.norm(dim=-1, keepdim=True)
-            
             image_feat_w = image_feat.reshape(-1, self.num_views, self.channel) * self.view_weights.reshape(1, -1, 1) # 16, 10, 512
-
             image_feat_w = image_feat_w.reshape(-1, self.num_views * self.channel).type(self.dtype) # 16, 5120
-                        
             image_feat = image_feat.reshape(-1, self.num_views * self.channel)
 
             # Store for zero-shot
@@ -103,5 +96,30 @@ class PointCLIPV2_ZS(TrainerX):
             self.label_store.append(label)
 
             logits = 100. * image_feat_w @ self.text_feat.t() # text_feats => 40, 5120
-
         return logits
+    
+
+    def model_train(self, pc, label=None):
+        breakpoint()
+        images = self.real_proj(pc) # 16, 1024, 3  = > 160, 3, 224, 224 (num_views = 10)
+        images = images.type(self.dtype)
+
+        image_feat = self.visual_encoder(images) # 160, 512
+        image_feat = image_feat / image_feat.norm(dim=-1, keepdim=True)
+
+
+        # image_feat_w = image_feat.reshape(-1, self.num_views, self.channel) * self.view_weights.reshape(1, -1, 1) # 16, 10, 512
+        # image_feat_w = image_feat_w.reshape(-1, self.num_views * self.channel).type(self.dtype) # 16, 5120
+        image_feat_w = image_feat.reshape(-1, 1, self.channel) * self.view_weights.reshape(1, -1, 1) # 16, 10, 512
+        image_feat_w = image_feat_w.reshape(-1, 1 * self.channel).type(self.dtype) # 16, 5120
+        image_feat = image_feat.reshape(-1, 1 * self.channel)
+
+        # Store for zero-shot
+        self.feat_store.append(image_feat)
+        self.label_store.append(label)
+
+        logits = 100. * image_feat_w @ self.text_feat.t() # text_feats => 40, 5120
+        return logits
+    
+
+

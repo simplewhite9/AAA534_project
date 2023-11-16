@@ -94,10 +94,10 @@ def main(args):
     print('** System info **\n{}\n'.format(collect_env_info()))
 
     trainer = build_trainer(cfg)
-
     # zero-shot classification
     if args.zero_shot:
-        trainer.test_zs()
+        # trainer.test_zs()
+        trainer.train('train')
         
     # view weight and prompt search
     vweights = best_param.best_prompt_weight['{}_{}_test_weights'.format(cfg.DATASET.NAME.lower(), cfg.MODEL.BACKBONE.NAME2)]
