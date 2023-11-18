@@ -2,8 +2,22 @@ blip
 raw_image.pt
 image_feature.pt
 */*/data/
+*/__pycache__/
+*/*/__pycache__/
 */*/*/__pycache__
 */*/*/*/__pycache__
 */*/*/*/*/__pycache__
 __pycache__/
 
+data
+ckpt
+
+*/checkpoint/
+output_dir
+
+extract
+pretrained
+wandb
+
+llama.egg-info/
+*.__pycache__
