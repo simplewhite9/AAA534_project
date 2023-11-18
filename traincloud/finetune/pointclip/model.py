@@ -2,23 +2,7 @@ import torch
 import torch.nn as nn
 from .clip import clip
 from .projection import Realistic_Projection
-import numpy as np
-
-class Textual_Encoder(nn.Module):
-    def __init__(self, args, clip_model):
-        super().__init__()
-        self.args = args
-        # self.cfg = cfg
-        self.classnames = args.classnames
-        self.clip_model = clip_model
-        self.dtype = clip_model.dtype
-    
-    def forward(self):
-        prompts = best_prompt_weight['{}_{}_test_prompts'.format(self.cfg.DATASET.NAME.lower(), self.cfg.MODEL.BACKBONE.NAME2)]
-        prompts = torch.cat([clip.tokenize(p) for p in prompts]).cuda()
-        text_feat = self.clip_model.encode_text(prompts).repeat(1, self.cfg.MODEL.PROJECT.NUM_VIEWS)
-        return text_feat
-    
+import numpy as np    
 
 def load_clip(args):
     url = clip._MODELS[args.model]
@@ -41,12 +25,17 @@ def load_clip(args):
 class PointCLIPV2_ZS(nn.Module):
     def __init__(self, args):
         super().__init__()
+
         self.args = args
-    
-        self.clip = load_clip(args).cuda()
-        self.visual_encoder = self.clip.visual
+        model, preprocess = clip.load(args.model)
+        model.eval()
+        model = model.cuda()
+
+        self.clip = model
+        self.preprocess = preprocess
+        self.visual_encoder = self.clip.encode_image
         self.text_encoder = self.clip.encode_text
-        self.logit_scale = self.clip.logit_scale * 0.2
+        # self.logit_scale = self.clip.logit_scale * 0.2
         self.dtype = self.clip.dtype
         self.channel = self.clip.embed_dim
 
@@ -55,6 +44,7 @@ class PointCLIPV2_ZS(nn.Module):
         # self.angle_bias = torch.tensor((np.pi / 4, np.pi / 4, np.pi / 4))
         self.pc_views = Realistic_Projection(args)
         self.finalrot = nn.Parameter(self.pc_views.finalRot, requires_grad=True)
+        self.finalrot1 = nn.Parameter(self.pc_views.finalRot, requires_grad=True)
         self.get_img = self.pc_views.get_img
         self.criterion = torch.nn.CrossEntropyLoss(ignore_index=0)        
 
@@ -120,22 +110,26 @@ class PointCLIPV2_ZS(nn.Module):
 
     def forward(self, pc, text_id=None):
         bs = pc.shape[0]
-        images = self.get_img(pc, rotation=self.finalrot)
-        images = torch.nn.functional.interpolate(images, size=(224, 224), mode='bilinear', align_corners=True)  
-        # images = self.real_proj(pc) # 16, 1024, 3  = > 160, 3, 224, 224 (num_views = 10)
-        # images = torch.randn(images.shape, requires_grad=True).to(images.device)
-        image_feat = images.type(self.dtype)
-        
-        image_feat = self.visual_encoder(images) # 160, 512
-        image_feat = image_feat / image_feat.norm(dim=1, keepdim=True)
+        images1, images2 = self.get_img(pc, rotation=[self.finalrot, self.finalrot1], addrotation=self.args.addrotation)
+
+        images1 = torch.nn.functional.interpolate(images1, size=(224, 224), mode='bilinear', align_corners=True)  
+        image_feat1 = self.visual_encoder(images1.type(self.dtype)) # 160, 512
+        image_feat1 = image_feat1 / image_feat1.norm(dim=1, keepdim=True)
+        image_feat = image_feat1.clone()
+
+        if images2 != None:
+            images2 = torch.nn.functional.interpolate(images2, size=(224, 224), mode='bicubic', align_corners=True)  
+            image_feat2 = self.visual_encoder(images2.type(self.dtype)) # 160, 512
+            image_feat2 = image_feat2 / image_feat2.norm(dim=1, keepdim=True)
+            image_feat = (image_feat + image_feat2)
+
         text_feat = self.text_encoder(text_id.squeeze(1))
         text_feat = text_feat / text_feat.norm(dim=1, keepdim=True)
 
+        # cosine similarity as logits
+        logit_scale = (self.clip.logit_scale* 0.2).exp()
+        logits = logit_scale * image_feat @ text_feat.t()
+
         pc_label = torch.arange(bs).cuda()
-        logit_scale = self.logit_scale.exp()
-
-        logits = logit_scale * image_feat @ text_feat.t() # text_feats => 40, 5120
-        # logits = image_feat @ text_feat.t() # text_feats => 40, 5120
-
         loss = self.criterion(logits.reshape(-1, bs), pc_label)
         return logits, loss

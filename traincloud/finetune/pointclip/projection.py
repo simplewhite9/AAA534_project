@@ -170,7 +170,7 @@ class Realistic_Projection(nn.Module):
         ####################################################################
         # self.angle_bias = nn.Parameter((torch.ones(4)* (np.pi / 4)))
         # self.angle_bias = nn.Parameter(torch.tensor((np.pi / 4, np.pi / 4, np.pi / 4)))
-        self.angle_bias = torch.tensor((np.pi / 4, np.pi / 4, np.pi / 4))
+        self.angle_bias = torch.tensor((np.pi / 4, 0, np.pi / 4))
         view_trans = torch.ones((3)) * -0.5
         _views = torch.stack((self.angle_bias, view_trans))[None, :]
         _views_bias = torch.tensor(([0, np.pi / 9, 0], [-0.5, 0, TRANS]))[None, :]
@@ -188,28 +188,28 @@ class Realistic_Projection(nn.Module):
         self.translation = self.translation.unsqueeze(1)
 
         b = args.batch_size
-        self.finalRot = self.rot_mat.repeat(b,1,1) @ self.rot_mat2.repeat(b,1,1)
+        self.finalRot = self.rot_mat @ self.rot_mat2
         self.grid2image = Grid2Image().cuda()
 
 
-    def get_img(self, points, rotation=None):
+    def get_img(self, points, rotation=None, addrotation=False):
         b, _, _ = points.shape
         v = self.translation.shape[0]
+        im1, img2 = None, None
 
-        _points = torch.repeat_interleave(points, v, dim=0) @ rotation
+        _points1 = torch.repeat_interleave(points, v, dim=0) @ rotation[0].repeat(b, 1, 1)
         translation = self.translation.repeat(b, 1, 1).to(points.device)
-        _points = _points - translation
+        _points1 = _points1 - translation
+        grid1 = points2grid(points=_points1, resolution=params['resolution'], depth=params['depth']).squeeze()
+        img1 = self.grid2image(grid1)
 
-        # _points = self.point_transform(
-        #     points=torch.repeat_interleave(points, v, dim=0),
-        #     rot_mat=self.rot_mat.repeat(b, 1, 1),
-        #     rot_mat2=self.rot_mat2.repeat(b, 1, 1),
-        #     translation=self.translation.repeat(b, 1, 1))
 
-        grid = points2grid(points=_points, resolution=params['resolution'], depth=params['depth']).squeeze()
-
-        img = self.grid2image(grid)
-        return img
+        if addrotation:
+            _points2 = torch.repeat_interleave(points, v, dim=0) @ rotation[1].repeat(b, 1, 1)
+            _points2 = _points2 - translation
+            grid2 = points2grid(points=_points2, resolution=params['resolution'], depth=params['depth']).squeeze()
+            img2 = self.grid2image(grid2)
+        return img1, img2
 
     @staticmethod
     def point_transform(points, rot_mat, rot_mat2, translation):

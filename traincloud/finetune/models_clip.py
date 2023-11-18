@@ -20,8 +20,9 @@ def clip_model(args, **kwargs):
     # import pdb; pdb.set_trace()
     for name, param in model.named_parameters():
         
-        if 'finalrot' in name or 'pc_views' in name:
+        if 'finalrot' in name :
             param.requires_grad = True
+            print(f"Train parameter {name}", "*" * 10)
         else:
             # param.requires_grad = False
             param.requires_grad = False

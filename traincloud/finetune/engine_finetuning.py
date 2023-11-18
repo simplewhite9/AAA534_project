@@ -83,8 +83,7 @@ def val_one_epoch(model: torch.nn.Module, data_loader: Iterable, optimizer: torc
         with torch.no_grad():
             logits, loss = model(pc, text_id )
             loss_value = loss.item()
-            # breakpoint()
 
         metric_logger.update(loss=loss_value)
             
-    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}, metric_logger, validation
+    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}

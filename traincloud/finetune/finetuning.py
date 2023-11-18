@@ -94,6 +94,8 @@ def get_args_parser():
     parser.add_argument('--opt', action='store_true')
     parser.add_argument('--mc', action='store_true', help="Multiple Choice dataset")
     parser.add_argument('--save_model', action='store_true')
+    parser.add_argument('--addrotation', action='store_true')
+    
 
     return parser
 
@@ -212,7 +214,7 @@ def main(args):
                 misc.save_model(args=args, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler, epoch=epoch, name=model_name)
 
             if global_rank == 0 and args.wandb_project is not None:
-                wandb.log({'acc': val_stats['acc'], 'best_loss': best_loss, 'learning_rate': train_stats['lr'], 'loss': train_stats['loss']})
+                wandb.log({'acc': val_stats['loss'], 'best_loss': best_loss, 'learning_rate': train_stats['lr'], 'loss': train_stats['loss'], 'rotation':args.addrotation})
 
             log_stats = {**{f'train_{k}': v for k, v in train_stats.items()}, 'epoch': epoch, **{f'val_{k}': v for k, v in val_stats.items()}}
 
