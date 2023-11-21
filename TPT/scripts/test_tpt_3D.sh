@@ -16,4 +16,4 @@ CUDA_VISIBLE_DEVICES=1 python ./tpt_classification_3D.py \
     --n_ctx 4 \
     --ctx_init ${ctx_init} \
     -p 500 \
-    --selection_p 0.6
+    --selection_p 0.5
